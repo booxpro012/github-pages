@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Group Scheduler</title>
+  <style>
+    /* Base Styling */
+    :root {
+      --primary-bg: #f8f8f8;
+      --container-bg: #fff;
+      --border-color: #ccc;
+      --dark-border-color: #000;
+      --shadow-color: rgba(0,0,0,0.1);
+      --header-bg: #b7b7b7;
+      --header-text: #fff;
+      --section-header-bg: #c9daf8;
+      --section-header-text: #244061;
+      --task-header-bg: #f3f3f3;
+      --row-even-bg: #f9f9f9;
+      --text-color: #333;
+      --link-color: #007bff;
+      --button-reset-bg: #d32f2f;
+      --button-reset-hover-bg: #b71c1c;
+      --button-generate-bg: #4CAF50;
+      --button-generate-hover-bg: #367c39;
+      --instruction-msg-bg: #f1f8e9;
+      --instruction-msg-border: #8bc34a;
+      --font-family-base: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    body {
+      font-family: var(--font-family-base); margin: 0; padding: 0; background: var(--primary-bg);
+      color: var(--text-color); font-size: 11pt; line-height: 1.5;
+    }
+    .responsive-container { width: 95%; max-width: 750px; margin: 20px auto; }
+    .scheduler-container { background: var(--container-bg); padding: 25px; margin: 20px auto; border: 1px solid var(--border-color); box-shadow: 0 0 8px var(--shadow-color); border-radius: 5px; }
+    h1 { font-size: 2em; margin-bottom: 15px; text-align: center; color: var(--section-header-text); }
+    p { margin-bottom: 15px; font-size: 1em; }
+    fieldset { border: 1px solid var(--border-color); margin-bottom: 20px; padding: 20px; border-radius: 4px; }
+    legend { font-weight: bold; font-size: 1.2em; padding: 0 10px; color: var(--section-header-text); }
+    .form-row { margin-bottom: 15px; }
+    .form-row:last-child { margin-bottom: 0; }
+    .form-row label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 0.95em; }
+    .form-row input[type="text"],
+    .form-row input[type="date"],
+    .form-row input[type="number"],
+    .form-row select,
+    .form-row textarea {
+      width: 100%; padding: 8px 10px; font-size: 1em; box-sizing: border-box;
+      border: 1px solid var(--border-color); border-radius: 3px; background-color: #fff; line-height: 1.4; font-family: inherit;
+    }
+    #scheduleInstructions { min-height: 180px; resize: vertical; }
+    #families { height: 100px; resize: vertical; }
+    #specificAfterInput { height: 100px; resize: vertical; }
+
+    .generated-instructions { white-space: pre-line; font-size: 13pt; padding: 10px; background: #fafafa; border-bottom: 1px solid #ddd; border-radius: 0; min-height: 50px; overflow-wrap: break-word; max-height: none; overflow-y: auto; }
+    .form-inline { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+    .form-inline label { margin-bottom: 0; font-weight: normal; }
+    .form-inline input[type="radio"], .form-inline input[type="checkbox"] { margin-right: 5px; vertical-align: middle; }
+    .small-italic { font-size: 0.9em; font-style: italic; color: #555; margin-top: 5px; display: block; }
+    .subheading { font-size: 1.1em; font-weight: bold; margin-bottom: 8px; color: #444; }
+    .decorative-box { border: 1px solid #bbb; padding: 15px; background: #f0f0f0; margin-top: 10px; border-radius: 4px; }
+
+    .table-wrapper { overflow-x: auto; max-width: 100%; margin: 0; border-radius: 4px; border: 1px solid var(--dark-border-color); box-shadow: 0 2px 6px var(--shadow-color); }
+    .scheduler-table {
+      width: 100%; max-width: 680px; border: none; border-collapse: separate; border-spacing: 0;
+      margin: 0 auto; font-size: 11pt; background: var(--container-bg); word-wrap: break-word;
+      box-shadow: none; table-layout: fixed; border-radius: inherit;
+    }
+     .scheduler-table tr:first-child td:first-child { border-top-left-radius: 3px; }
+     .scheduler-table tr:first-child td:last-child { border-top-right-radius: 3px; }
+     .scheduler-table tr:last-child td:first-child { border-bottom-left-radius: 3px; }
+     .scheduler-table tr:last-child td:last-child { border-bottom-right-radius: 3px; }
+     .scheduler-table colgroup col.details-col { width: 30%; }
+     .scheduler-table colgroup col.assign-col { width: 35%; }
+    .scheduler-table tr:nth-child(even):not(:has(.header)):not(:has(.section-header)):not(:has(.task-header)) { background-color: var(--row-even-bg); }
+    .scheduler-table td { border: none; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color); padding: 6px 8px; vertical-align: top; overflow-wrap: break-word; font-size: 1em; }
+    .scheduler-table td:last-child { border-right: none; }
+    .scheduler-table tr:last-child td { border-bottom: none; }
+     .scheduler-table .header, .scheduler-table .date-header, .scheduler-table .section-header, .scheduler-table .task-header { border-bottom: 1px solid var(--dark-border-color); }
+     .scheduler-table .header, .scheduler-table .date-header { border-right: none; }
+
+    .scheduler-table .header { background-color: var(--header-bg); color: var(--header-text); font-size: 18pt; font-weight: bold; text-align: center; }
+    .scheduler-table .date-header { background-color: var(--header-bg); color: var(--header-text); font-size: 1.1em; font-weight: bold; text-align: right; vertical-align: middle; }
+    .scheduler-table .section-header { background-color: var(--section-header-bg); color: var(--section-header-text); font-variant: small-caps; font-weight: bold; font-size: 1.1em; text-align: center; padding: 8px; }
+    .scheduler-table .task-header { background-color: var(--task-header-bg); font-size: 1em; padding: 6px 10px; font-weight: bold; }
+    .details-list { margin: 0; padding-left: 18px; list-style: disc; font-size: 0.9em; }
+    .details-list li { margin-bottom: 3px; }
+    .scheduler-table td[contenteditable="true"] { background-color: #fff; color: #000; }
+    .scheduler-table td[contenteditable="true"]:focus { outline: 2px solid var(--link-color); background-color: #eef; box-shadow: inset 0 0 3px rgba(0,0,0,0.1); }
+
+    .week-schedule-container { max-width: 680px; margin: 0 auto 25px auto; padding: 0; background: transparent; border: none; border-radius: 0; }
+    #instructionMessage { background: var(--instruction-msg-bg); border: 1px solid var(--instruction-msg-border); border-radius: 4px; padding: 12px; text-align: center; font-size: 1em; margin-top: 15px; }
+    .button-container { display: flex; justify-content: space-between; margin-top: 25px; gap: 15px; }
+    .action-button { color: var(--header-text); padding: 10px 20px; border: none; border-radius: 4px; font-size: 1.1em; cursor: pointer; transition: background-color 0.2s ease, box-shadow 0.2s ease; flex-grow: 1; text-align: center; }
+    .action-button:hover { box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+    #generateButton { background-color: var(--button-generate-bg); } #generateButton:hover { background-color: var(--button-generate-hover-bg); }
+    #resetButton { background-color: var(--button-reset-bg); } #resetButton:hover { background-color: var(--button-reset-hover-bg); }
+    .schedule-output { margin-top: 30px; background-color: var(--primary-bg); padding: 10px 0; display: none; }
+
+    /* Print Specific Styles - WITH SCALING (80/90/100) & CENTERING */
+    @media print {
+      @page { size: letter portrait; margin: 0.5in; }
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      body { background: #fff !important; margin: 0; padding: 0; font-size: 9pt; color: #000 !important; }
+      .scheduler-container, .button-container, #instructionMessage { display: none !important; }
+      .schedule-output { margin: 0; padding: 0; display: block !important; background-color: #fff !important; }
+
+      /* Define Scaling Classes applied to scheduleOutput */
+      .resize-print-100 .week-schedule-container { transform: scale(1.0); }
+      .resize-print-80 .week-schedule-container { transform: scale(0.80); } /* Updated Scale */
+      .resize-print-90 .week-schedule-container { transform: scale(0.90); } /* Updated Scale */
+
+      /* Common styles for the container being scaled */
+      .week-schedule-container {
+         display: block; width: 680px; max-width: 680px;
+         margin: 10px auto; /* Centering + top/bottom margin */ padding: 0;
+         border: 1px solid #666; box-shadow: none; page-break-after: always;
+         page-break-inside: avoid !important; overflow: hidden; transform-origin: top;
+         background: #fff !important; border-radius: 0;
+      }
+
+      .table-wrapper { margin: 0; overflow: visible; max-width: none; page-break-inside: avoid; border: none; box-shadow: none; border-radius: 0; }
+      .scheduler-table {
+         max-width: none; width: 100%; font-size: 9pt; border: none;
+         border-collapse: separate; border-spacing: 0; box-shadow: none;
+         page-break-inside: auto; table-layout: fixed; border-radius: 0;
+      }
+       .scheduler-table td { padding: 2px 4px; font-size: 9pt; word-wrap: break-word; border: none !important; border-bottom: 1px solid #aaa !important; border-right: 1px solid #aaa !important; line-height: 1.2; }
+        .scheduler-table td:last-child { border-right: none !important;}
+        .scheduler-table tr:last-child td { border-bottom: none !important;}
+        .scheduler-table thead tr:first-child td { border-top: none !important; }
+
+       /* Color printing styles & borders */
+       .scheduler-table .header, .scheduler-table .date-header, .scheduler-table .section-header, .scheduler-table .task-header,
+       .scheduler-table tr:nth-child(even):not(:has(.header)):not(:has(.section-header)):not(:has(.task-header)) { background-color: inherit; }
+       .scheduler-table .header { font-size: 14pt; color: var(--header-text) !important; background-color: var(--header-bg) !important; border-bottom: 1px solid #000 !important; }
+       .scheduler-table .date-header { font-size: 10pt; color: var(--header-text) !important; background-color: var(--header-bg) !important; border-bottom: 1px solid #000 !important; }
+       .scheduler-table .section-header { font-size: 10pt; color: var(--section-header-text) !important; background-color: var(--section-header-bg) !important; padding: 4px; border-top: 1px solid #000 !important; border-bottom: 1px solid #000 !important;}
+       .scheduler-table .task-header { font-size: 9pt; background-color: var(--task-header-bg) !important; padding: 3px 4px; border-bottom: 1px solid #000 !important; border-top: 1px solid #999 !important; }
+       .scheduler-table tr:nth-child(even):not(:has(.header)):not(:has(.section-header)):not(:has(.task-header)) { background-color: var(--row-even-bg) !important; }
+       .details-list { font-size: 8pt; padding-left: 12px; margin: 1px 0; } .details-list li { margin-bottom: 1px; }
+       .generated-instructions { font-size: 10pt; padding: 4px; background: #fafafa !important; border-bottom: 1px solid #ccc !important; max-height: none; }
+       .scheduler-table td[contenteditable="true"] { background-color: transparent !important; color: #000 !important; box-shadow: none; outline: none; border-bottom: 1px solid #aaa !important; border-right: 1px solid #aaa !important; }
+    }
+
+    /* Responsive Adjustments */
+    @media screen and (max-width: 768px) { body { font-size: 10pt; } .responsive-container { width: 98%; } .scheduler-table { font-size: 10pt; max-width: 100%; } h1 { font-size: 1.8em; } .button-container { flex-direction: column; gap: 10px; } .action-button { width: 100%; box-sizing: border-box; } .form-inline { gap: 10px; } }
+    @media screen and (max-width: 480px) { body { font-size: 9pt; } .scheduler-table { font-size: 9pt; } .details-list { font-size: 8pt; } .form-inline { flex-direction: column; align-items: flex-start; } .form-inline label { margin-bottom: 5px; } .action-button { font-size: 1em; padding: 8px 15px; } }
+  </style>
+</head>
+<body>
+  <div class="scheduler-container responsive-container">
+    <form id="groupSchedulerForm" onsubmit="event.preventDefault();">
+        <h1>Group Scheduler Tool</h1>
+        <p>
+          Welcome! This tool helps generate cleaning schedules. Input your group details and volunteers below.<br>
+          All data is saved locally in your browser, not on any server.
+        </p>
+        <fieldset><legend>Schedule Opening Information</legend>
+            <div class="form-row">
+                <div class="form-inline"><label><input type="radio" name="instructionMode" value="default" checked> Default Opening</label><label><input type="radio" name="instructionMode" value="custom"> Custom Opening</label></div>
+                <label for="scheduleInstructions" id="instructionLabel">Opening Instructions:</label>
+                <textarea id="scheduleInstructions" aria-labelledby="instructionLabel">
+Please read the cleaning assignments carefully. This includes the after meeting touch ups and the separate cleaning assignments that should be completed before the meeting Sunday.
+If you are not able to handle your assignments, please inform the Group Overseer as soon as possible.
+We appreciate all your hard work in helping maintain the cleanliness of Kingdom Hall and most of all Jehovah appreciates it and sees your effort.
+[ Hebrews 6:10a: For God is not unrighteous so as to forget your work and the love you showed for his name ]
+Thank you so much!
+</textarea>
+            </div>
+        </fieldset>
+        <fieldset><legend>Group Name</legend><div class="form-row"><label for="groupName">Enter Group Name:</label><input type="text" id="groupName" placeholder="e.g., Shamokin" /></div></fieldset>
+        <fieldset><legend>Schedule Settings</legend>
+            <div class="form-row"><label>Cleaning Start Date:</label><input type="date" id="startDate" /><small class="small-italic">The schedule starts on the Monday of the selected week.</small></div>
+            <div class="form-row"><label>Cleaning Interval (in Weeks):</label><input type="number" id="interval" value="4" min="1" /></div>
+            <div class="form-row"><label>Number of Schedules to Generate:</label><select id="numSchedules"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option></select></div>
+        </fieldset>
+        <fieldset><legend>General Volunteer Information (for Weekly Cleaning)</legend>
+            <div class="form-row">
+                <div class="subheading">Weekly Cleaning Volunteers</div>
+                <div style="font-size: 0.95em; margin-bottom: 10px;">
+                    Enter volunteers for the main weekly tasks here.
+                    <ul>
+                        <li>Put families or groups who clean together on the <b>same line</b>, separated by commas (e.g., <code style="font-size: 0.9em">Timothy, Silas</code>).</li>
+                        <li>Put individuals on a <b>separate line</b> each (e.g., <code style="font-size: 0.9em">Aquila</code> on one line, <code style="font-size: 0.9em">Lydia</code> on the next).</li>
+                    </ul>
+                    These volunteers are used ONLY for Weekly Cleaning tasks (bathrooms, glass, dusting, vacuuming, mopping).
+                </div>
+                <textarea id="families" placeholder="e.g., Timothy, Silas&#10;Aquila&#10;Lydia"></textarea>
+            </div>
+        </fieldset>
+        <fieldset><legend>After Meeting Task Assignments (Optional)</legend>
+            <div class="form-row"><label class="form-inline"><input type="checkbox" id="enableAfterAssignment"> Enable After Meeting Tasks</label><div id="afterAssignmentNote" class="small-italic">Check this box to assign light tasks (like tidying chairs/restrooms, emptying trash) after each meeting.</div></div>
+            <div id="afterAssignmentOptions" style="display:none;">
+                <div class="decorative-box">
+                    <div class="form-row"><label>Assignment Mode:</label><div class="form-inline">
+                        <label><input type="radio" name="afterMeetingMode" value="specific" checked> Assign Specific Volunteers Per Day</label>
+                        <label><input type="radio" name="afterMeetingMode" value="half"> Split All After-Meeting Volunteers Equally</label>
+                    </div></div>
+                    <div class="form-row"><label for="midweekDay">Midweek Meeting Day Name:</label><input type="text" id="midweekDay" value="Thursday" /></div>
+                </div>
+                <div id="specificFriendsSection" style="border: 1px solid #ccc; padding: 15px; margin-top: 15px; border-radius: 4px;">
+                    <h4>Additional Volunteers for After Meeting Tasks</h4>
+                    <div style="font-size: 0.95em; margin-bottom: 10px;">
+                       Use this list for friends who might prefer <b>lighter duty work</b> or have limited availability.
+                       <ul>
+                           <li>Volunteers listed here will <b>only</b> be considered for the lighter <b>after meeting tasks</b> (like tidying up).</li>
+                           <li>They will <b>not</b> be assigned to the standard Weekly Cleaning schedule tasks.</li>
+                           <li>Enter one name per line below.</li>
+                       </ul>
+                    </div>
+                    <div class="form-row"><label for="specificAfterInput">Enter Additional Volunteers (one name per line):</label><textarea id="specificAfterInput" placeholder="e.g., David&#10;Miriam&#10;John"></textarea></div>
+                </div>
+            </div>
+        </fieldset>
+        <div class="button-container"><button id="generateButton" class="action-button" type="button" onclick="generateSchedule()">Generate Schedule</button><button id="resetButton" class="action-button" type="button" onclick="resetStorage()">Reset All Data</button></div>
+        <div id="instructionMessage">Click "Generate Schedule". Once generated, you can click directly on names or details in the tables to make manual edits. Use browser print (Ctrl+P or Cmd+P) to print or save as PDF.</div>
+    </form>
+  </div>
+
+  <div class="schedule-output" id="scheduleOutput"></div><script>
+    "use strict";
+    /* ------------------------- Constants and Config ------------------------- */
+    const STORAGE_PREFIX = 'group_scheduler_v12_'; // Updated prefix
+    const AFTER_MEETING_SPLIT_TASK = 'Vacuum carpets in high traffic areas';
+
+    /* ------------------------- Local Storage Helper Functions ------------------------- */
+    function setData(key, value) { try { localStorage.setItem(STORAGE_PREFIX + key, value); } catch (e) { console.error("LS Error:", e); alert("Could not save data."); } }
+    function getData(key) { return localStorage.getItem(STORAGE_PREFIX + key) || ""; }
+    function resetStorage() { if (confirm("Are you sure you want to reset ALL saved data?")) { Object.keys(localStorage).forEach(key => { if (key.startsWith(STORAGE_PREFIX)) localStorage.removeItem(key); }); document.getElementById('groupSchedulerForm').reset(); document.getElementById('scheduleInstructions').value = getDefaultInstructions(); document.querySelector('input[name="instructionMode"][value="default"]').checked=true; setDefaultStartDate(); handleEnableAfterChange(); } }
+
+    /* ------------------------- On Load Initialization ------------------------- */
+    window.addEventListener('load', () => { loadSettings(); setupEventListeners(); if (!document.getElementById('startDate').value) setDefaultStartDate(); handleEnableAfterChange(); });
+
+    function loadSettings() { const iTa=document.getElementById('scheduleInstructions'); document.getElementById('groupName').value = getData('group_name'); const savedIns=getData('scheduleInstructions'); if(iTa){ if(savedIns){iTa.value=savedIns; document.querySelector(`input[name="instructionMode"][value="${savedIns.trim()===getDefaultInstructions().trim()?'default':'custom'}"]`).checked=true;}else{iTa.value=getDefaultInstructions(); document.querySelector('input[name="instructionMode"][value="default"]').checked=true;}} document.getElementById('families').value = getData('families'); document.getElementById('specificAfterInput').value = getData('specificAfterInput'); document.getElementById('midweekDay').value = getData('midweekDay') || "Thursday"; document.getElementById('interval').value = getData('interval') || "4"; document.getElementById('numSchedules').value = getData('numSchedules') || "1"; document.getElementById('startDate').value = getData('startDate'); const ea=getData('enableAfterAssignment')==='true'; document.getElementById('enableAfterAssignment').checked=ea; const amm=getData('afterMeetingMode')||'specific'; const rts=document.querySelector(`input[name="afterMeetingMode"][value="${amm}"]`); if(rts)rts.checked=true; }
+    function setDefaultStartDate() { const t=new Date(); let nm=new Date(t.getFullYear(),t.getMonth(),t.getDate()); nm.setDate(nm.getDate()+(1+7-nm.getDay())%7); if(nm<=t)nm.setDate(nm.getDate()+7); document.getElementById('startDate').value=nm.toISOString().split('T')[0]; }
+
+    /* ------------------------- Instruction Handling for Textarea ------------------------- */
+     function handleInstructionInput() { setData('scheduleInstructions', this.value); document.querySelector(`input[name="instructionMode"][value="${this.value.trim()===getDefaultInstructions().trim()?'default':'custom'}"]`).checked=true;}
+     function handleInstructionModeChange() { if (this.checked&&this.value==='default'){const dt=getDefaultInstructions(); document.getElementById('scheduleInstructions').value=dt; setData('scheduleInstructions', dt);}}
+
+    /* ------------------------- Setup Event Listeners for Auto-Saving ------------------------- */
+     function setupEventListeners() { document.getElementById('groupName').addEventListener('input', function(){setData('group_name',this.value);}); document.getElementById('scheduleInstructions').addEventListener('input',handleInstructionInput); document.getElementById('families').addEventListener('input', function(){setData('families',this.value);}); document.getElementById('specificAfterInput').addEventListener('input', function(){setData('specificAfterInput',this.value);}); document.getElementById('midweekDay').addEventListener('input', function(){setData('midweekDay',this.value);}); document.getElementById('startDate').addEventListener('change', function(){setData('startDate',this.value);}); document.getElementById('interval').addEventListener('input', function(){setData('interval',this.value);}); document.getElementById('numSchedules').addEventListener('change', function(){setData('numSchedules',this.value);}); document.getElementById('enableAfterAssignment').addEventListener('change',handleEnableAfterChange); document.querySelectorAll('input[name="afterMeetingMode"]').forEach(r=>r.addEventListener('change',handleAfterModeChange)); document.querySelectorAll('input[name="instructionMode"]').forEach(r=>r.addEventListener('change',handleInstructionModeChange)); }
+
+    /* ------------------------- Other Event Handlers ------------------------- */
+     function handleEnableAfterChange() { const iC=document.getElementById('enableAfterAssignment').checked; setData('enableAfterAssignment', iC); document.getElementById('afterAssignmentOptions').style.display = iC?'':'none'; document.getElementById('afterAssignmentNote').style.display = iC?'none':''; }
+     function handleAfterModeChange() { setData('afterMeetingMode', this.value); }
+
+    /* ------------------------- Get Default Instructions Text (Plain Text) ------------------------- */
+     function getDefaultInstructions() { return `Please read the cleaning assignments carefully. This includes the after meeting touch ups and the separate cleaning assignments that should be completed before the meeting Sunday.\nIf you are not able to handle your assignments, please inform the Group Overseer as soon as possible.\nWe appreciate all your hard work in helping maintain the cleanliness of Kingdom Hall and most of all Jehovah appreciates it and sees your effort.\n[ Hebrews 6:10a: For God is not unrighteous so as to forget your work and the love you showed for his name ]\nThank you so much!`; }
+
+    /* ------------------------- Date -> Monday Calculation ------------------------- */
+    function adjustToMonday(dS) { const p=dS.split('-');const d=new Date(Date.UTC(+p[0],+p[1]-1,+p[2]));const dy=d.getUTCDay();d.setUTCDate(d.getUTCDate()+(dy===0?-6:1-dy));return d;}
+
+    /* ------------------------- Volunteer Parsing Functions ------------------------- */
+    function parseGeneralVolunteers() { const txt=document.getElementById('families').value; const v=[]; let u=0; txt.split('\n').forEach(l=>{const t=l.trim(); if(!t) return; u++; const n=t.split(',').map(nm=>nm.trim()).filter(nm=>nm); if(n.length>0){const sz=n.length; n.forEach(nm=>v.push({name:nm, unitId:u, unitSize:sz}));}}); return v; }
+    function parseAdditionalAfterVolunteers() { const txt=document.getElementById('specificAfterInput').value; const v=[]; txt.split('\n').forEach(l=>{const n=l.trim(); if(n) v.push({name:n});}); return v; }
+
+    /* ------------------------- Random Selection Helpers ------------------------- */
+    function selectRandom(a) { if (!a||a.length===0) return null; return a[Math.floor(Math.random()*a.length)]; }
+    function shuffleArray(a) { let i=a.length; const na=[...a]; while(i!==0){let r=Math.floor(Math.random()*i);i--;[na[i],na[r]]=[na[r],na[i]];} return na;}
+
+    /* ------------------------- Task Definitions ------------------------- */
+    const afterMeetingTasks=[{name:'Straighten chairs and row seating'},{name:'Tidy restrooms and check supplies'},{name:'Empty trash receptacles as needed'},{name:AFTER_MEETING_SPLIT_TASK}];
+    const weeklyCleaningTasks=[{name:'Glass Cleaning',type:'single'},{name:'Dusting & Trash Removal',type:'single'},{name:'Men’s Bathroom',type:'single'},{name:'Women’s Bathroom',type:'single'},{name:'Vacuuming',type:'two_friends'},{name:'Mopping / Swiffering',type:'two_friends'}];
+
+    /* ------------------------- Assignment Logic (No changes needed) ------------------------- */
+    function assignAfterMeetingSpecificUnique(cP) { const t={}; const a=new Set(); const p=shuffleArray(cP); function gu(){for(let i=0;i<p.length;i++){const v=p[i]; if(!a.has(v.name)){a.add(v.name);return v;}}return null;} afterMeetingTasks.forEach(tsk=>{const th=gu();const s=gu();t[tsk.name]={thursday:th?[th.name]:[], sunday:s?[s.name]:[]};}); return t;}
+    function assignAfterMeetingHalfCombined(cP) { const t={}; afterMeetingTasks.forEach(tsk=>{t[tsk.name]={thursday:[], sunday:[]};}); if (!cP || cP.length===0) return t; const s=shuffleArray(cP); const h=Math.ceil(s.length/2); const thA=s.slice(0,h).map(v=>v.name||''); const suA=s.slice(h).map(v=>v.name||''); t[AFTER_MEETING_SPLIT_TASK]={thursday:thA, sunday:suA}; return t;}
+    function assignWeeklyCleaningTasks(gV) { const a={}; if (!gV||gV.length===0){weeklyCleaningTasks.forEach(t=>{a[t.name]=[];}); return a;} let av=shuffleArray(gV); const assigned=new Set(); function gv(req, type){const sel=[]; let att=0; const maxAtt=av.length*2+5; if(type==='two_friends'&&req===2){const au=av.filter(v=>!assigned.has(v.name)); const pu=[...new Set(au.map(v=>v.unitId))].map(id=>({id:id, members:au.filter(v=>v.unitId===id)})).filter(u=>u.members.length>=2); if(pu.length>0){const cu=selectRandom(pu); const mem=cu.members.slice(0,2); mem.forEach(v=>{sel.push(v); assigned.add(v.name);}); return sel;}} while(sel.length<req && att<maxAtt){let cp=av.filter(v=>!assigned.has(v.name)); if(cp.length===0 && sel.length<req) cp=av; let can=selectRandom(cp); if(can){if(!assigned.has(can.name)){sel.push(can); assigned.add(can.name);} else if(cp===av){sel.push(can);}} att++;} return sel;} weeklyCleaningTasks.forEach(t=>{let n=(t.type==='two_friends'?2:1); a[t.name]=gv(n, t.type).map(v=>v.name);}); return a;}
+
+    /* ------------------------- Schedule Generation Orchestrator ------------------------- */
+    function generateSchedules(sd, iv, ns, gn, iText) { const s=[]; const bm=adjustToMonday(sd); const pgn=gn.toLowerCase().endsWith(" group")?gn:gn+" Group"; const gv=parseGeneralVolunteers(); const aav=parseAdditionalAfterVolunteers(); const cmap=new Map(); gv.forEach(v=>cmap.set(v.name,v)); aav.forEach(v=>cmap.set(v.name,v)); const cap=Array.from(cmap.values()); if(gv.length===0){alert('Err: No general volunteers.');return[];} const ea=document.getElementById('enableAfterAssignment').checked; if(ea&&cap.length===0){alert('Err: AM enabled, no volunteers.');return[];} const am=ea?document.querySelector('input[name="afterMeetingMode"]:checked').value:'none'; for(let i=0;i<ns;i++){const ws=new Date(bm); ws.setUTCDate(ws.getUTCDate()+i*iv*7); const we=new Date(ws); we.setUTCDate(we.getUTCDate()+6); const dr=`${ws.toLocaleDateString('en-US',{timeZone:'UTC',month:'long',day:'numeric'})} - ${we.toLocaleDateString('en-US',{timeZone:'UTC',month:'long',day:'numeric',year:'numeric'})}`; const wca=assignWeeklyCleaningTasks(gv); let ama={}; if(ea){if(am==='specific'){ama=assignAfterMeetingSpecificUnique(cap);}else if(am==='half'){ama=assignAfterMeetingHalfCombined(cap);}}else{afterMeetingTasks.forEach(t=>{ama[t.name]={thursday:[],sunday:[]};});} s.push({serviceGroup:pgn,dateRange:dr,instructionsText:iText,enableAfter:ea,afterMode:am,amAssignments:ama,wcAssignments:wca});} return s;}
+
+    /* ------------------------- HTML Rendering Functions ------------------------- */
+     function createAfterMeetingHtml(sch) { const midL=document.getElementById('midweekDay').value.trim()||"Midweek"; const iDisp=sch.instructionsText.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>"); let h=`<div class="table-wrapper"><table class="scheduler-table"><colgroup><col class="details-col"><col class="assign-col"><col class="assign-col"></colgroup><thead><tr><td colspan="2" class="header">${sch.serviceGroup}</td><td class="date-header">${sch.dateRange}</td></tr><tr><td colspan="3" class="generated-instructions">${iDisp}</td></tr></thead><tbody>`; if(sch.enableAfter){h+=`<tr><td colspan="3" class="section-header">AFTER EVERY MEETING</td></tr>`; afterMeetingTasks.forEach(t=>{h+=`<tr><td colspan="3" class="task-header">${t.name}</td></tr>`; const a=sch.amAssignments[t.name]||{thursday:[],sunday:[]}; const thV=a.thursday||[]; const suV=a.sunday||[]; if(sch.afterMode==='specific'||(sch.afterMode==='half'&&t.name===AFTER_MEETING_SPLIT_TASK)){h+=`<tr><td>${midL}:</td><td colspan="2" contenteditable="true">${thV.join(', ')}</td></tr>`; h+=`<tr><td>Sunday:</td><td colspan="2" contenteditable="true">${suV.join(', ')}</td></tr>`;}}); } return h; }
+     function createWeeklyCleaningHtml(sch) { const wc=sch.wcAssignments||{}; let h=`<tr><td colspan="3" class="section-header">WEEKLY CLEANING ASSIGNMENTS</td></tr> ${renderWeeklyCleaningTask('Glass Cleaning', wc['Glass Cleaning'], ['All Windows','Mirrors','All Glass Doors'])} ${renderWeeklyCleaningTask('Dusting & Trash Removal', wc['Dusting & Trash Removal'], ['Dust All Countertops','Chairs','Lectern','Window Sills','Empty all Trash'])} ${renderWeeklyCleaningTask('Men’s Bathroom', wc['Men’s Bathroom'], ['Sink','Toilet','Urinal','Walls & Doors','Changing Counter'])} ${renderWeeklyCleaningTask('Women’s Bathroom', wc['Women’s Bathroom'], ['Sink','Toilet','Walls & Doors','Changing Counter'])} ${renderWeeklyCleaningTask('Vacuuming', wc['Vacuuming'], ['Carpet Area on Stage','Front Seating Area','Rear of Seating Area','(Incl. Library/Bath Entry)'])} ${renderWeeklyCleaningTask('Mopping / Swiffering', wc['Mopping / Swiffering'], ['Bathroom Areas','Entryway','Library Sink Area','Restock Supplies'])} </tbody></table></div>`; return h;}
+     function renderWeeklyCleaningTask(tN, aA, bI) { aA=aA||[]; const a1=aA[0]||''; const a2=aA[1]||''; const bH=bI.map(i=>`<li>${i}</li>`).join(''); let r=`<tr><td colspan="3" class="task-header">${tN}</td></tr><tr>`; r+=`<td><ul class="details-list">${bH}</ul></td>`; const tD=weeklyCleaningTasks.find(t=>t.name===tN); if(tD&&tD.type==='two_friends'){r+=`<td contenteditable="true">${a1}</td><td contenteditable="true">${a2}</td>`;}else{r+=`<td colspan="2" contenteditable="true">${a1}</td>`;} r+=`</tr>`; return r;}
+
+    /* ------------------------- Main Generate Button Action ------------------------- */
+    function generateSchedule() {
+      // Validation
+      const gn = document.getElementById('groupName').value.trim(); if (!gn) { alert('Please enter a group name.'); return; }
+      const sd = document.getElementById('startDate').value; if (!sd || !/^\d{4}-\d{2}-\d{2}$/.test(sd)) { alert('Please select a valid start date.'); return; }
+      const iv = parseInt(document.getElementById('interval').value, 10); if (isNaN(iv) || iv < 1) { alert('Please enter a valid interval.'); return; }
+      const ns = parseInt(document.getElementById('numSchedules').value, 10); if (isNaN(ns) || ns < 1) { alert('Please select a valid number of schedules.'); return; }
+      const iText = document.getElementById('scheduleInstructions').value;
+
+      // Generate Data
+      const schedulesData = generateSchedules(sd, iv, ns, gn, iText);
+      if (!schedulesData || schedulesData.length === 0) { console.error("Schedule generation stopped."); return; }
+
+      // Determine Print Scaling Class (Conditional Logic - Updated Percentages)
+      let printScaleClass = 'resize-print-100'; // Default: No scaling
+      const enableAfter = document.getElementById('enableAfterAssignment').checked;
+      if (enableAfter) {
+          const afterMode = document.querySelector('input[name="afterMeetingMode"]:checked').value;
+          if (afterMode === 'specific') { printScaleClass = 'resize-print-80'; } // 80% class name
+          else if (afterMode === 'half') { printScaleClass = 'resize-print-90'; } // 90% class name
+      }
+      // console.log("Applied Print Scale Class:", printScaleClass);
+
+      // Render Output
+      const outputDiv = document.getElementById('scheduleOutput');
+      outputDiv.innerHTML = '';
+      // Apply the determined print scaling class to the output container
+      outputDiv.className = `schedule-output ${printScaleClass}`; // Class determines scaling via CSS
+
+      document.querySelector('.scheduler-container').style.display = 'none';
+      outputDiv.style.display = 'block';
+
+      schedulesData.forEach(schedule => {
+        const afterHtml = createAfterMeetingHtml(schedule);
+        const weeklyHtml = createWeeklyCleaningHtml(schedule);
+        const container = document.createElement('div');
+        container.className = "week-schedule-container"; // Target for scaling styles in print view
+        container.innerHTML = afterHtml + weeklyHtml;
+        outputDiv.appendChild(container);
+      });
+
+      outputDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+  </script>
+</body>
+</html>
